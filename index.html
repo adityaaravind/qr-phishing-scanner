@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>QR Phishing Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="hero">
+        <h1>See where a QR code <span class="hl">really</span> takes you — before you open it.</h1>
+        <p>Quishing — phishing hidden inside QR codes — works because your camera opens the link before you ever see it. This scanner decodes the code first, then pulls the destination apart: lookalike domains, shorteners hiding the real address, punycode tricks, and more.</p>
+        <div class="hero-tags" aria-hidden="true">
+          <span>Lookalike &amp; typosquat domains</span>
+          <span>URL shorteners</span>
+          <span>Punycode &amp; @ tricks</span>
+          <span>Wi-Fi &amp; payment codes</span>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="stack">
+          <!-- Scanner -->
+          <section class="card" aria-labelledby="scan-h">
+            <h2 id="scan-h">Scan a code</h2>
+            <p class="sub">Point your camera at a poster, menu, or parking-meter code — or feed the scanner an image or a link.</p>
+            <div class="seg" role="tablist" aria-label="Input method">
+              <button role="tab" id="tab-camera" aria-selected="true" aria-controls="pane-camera" data-pane="pane-camera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Camera
+              </button>
+              <button role="tab" id="tab-upload" aria-selected="false" aria-controls="pane-upload" data-pane="pane-upload">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload
+              </button>
+              <button role="tab" id="tab-paste" aria-selected="false" aria-controls="pane-paste" data-pane="pane-paste">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Paste link
+              </button>
+            </div>
+
+            <div class="pane" id="pane-camera" role="tabpanel" aria-labelledby="tab-camera">
+              <div class="stage" id="stage">
+                <video id="camVideo" playsinline muted></video>
+                <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                <div class="scanline" aria-hidden="true"></div>
+                <div class="stage-msg" id="stageMsg">Camera is off. Start it and hold a QR code inside the frame — the scanner reads it without opening anything.</div>
+              </div>
+              <div class="stage-actions">
+                <button class="btn btn-primary" id="btnCamStart">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                  Start camera
+                </button>
+                <button class="btn btn-ghost" id="btnCamStop" disabled>Stop</button>
+              </div>
+              <p class="cam-note">Frames are decoded on this device — the camera feed is never uploaded anywhere.</p>
+              <div class="err" id="camErr" role="alert"></div>
+            </div>
+
+            <div class="pane" id="pane-upload" role="tabpanel" aria-labelledby="tab-upload" hidden>
+              <div class="drop" id="dropZone">
+                <strong>Drop a screenshot or photo of a QR code</strong>
+                <p>PNG or JPG — a screenshot of a suspicious code works fine.</p>
+                <button class="btn btn-primary" id="btnPickFile">Choose image</button>
+                <input type="file" id="fileInput" accept="image/*" hidden />
+              </div>
+              <div class="err" id="uploadErr" role="alert"></div>
+            </div>
+
+            <div class="pane" id="pane-paste" role="tabpanel" aria-labelledby="tab-paste" hidden>
+              <label for="pasteInput" style="font-weight:600; font-size:.92rem; display:block; margin-bottom:8px;">Link or decoded text</label>
+              <textarea id="pasteInput" placeholder="https://example.com/login — or any text a QR code gave you" spellcheck="false"></textarea>
+              <div class="pane-actions">
+                <button class="btn btn-primary" id="btnAnalyze">Analyze</button>
+                <button class="btn btn-ghost" id="btnClipboard">Paste from clipboard</button>
+              </div>
+              <div class="err" id="pasteErr" role="alert"></div>
+            </div>
+          </section>
+
+          <!-- Result -->
+          <section class="card" aria-labelledby="result-h" aria-live="polite">
+            <h2 id="result-h">Verdict</h2>
+            <div id="resultBody">
+              <div class="result-empty">
+                <p style="margin:0;">Nothing scanned yet. When you scan a code, you'll get a risk score and a check-by-check breakdown here — including the one thing that matters most: the <strong>real destination domain</strong>, spelled out where a sticker or poster can't hide it.</p>
+                <ul>
+                  <li>Is the domain the brand it claims to be?</li>
+                  <li>Is a shortener or subdomain hiding the true address?</li>
+                  <li>Is it a link at all — or a Wi-Fi, payment, or authenticator code?</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- Samples -->
+          <section class="card" aria-labelledby="samples-h">
+            <h2 id="samples-h">Try it on these first</h2>
+            <p class="sub">Practice codes, safe to experiment with. Tap one to run it through the analyzer — or point the camera at a tile from another screen.</p>
+            <div class="sample-chips" id="sampleChips"></div>
+            <div class="qr-tiles" id="qrTiles"></div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <!-- History -->
+          <section class="card" aria-labelledby="hist-h">
+            <h2 id="hist-h">This session</h2>
+            <p class="sub">Codes you've checked, most recent first. Tap one to see its verdict again.</p>
+            <p class="hist-empty" id="histEmpty">No scans yet this session.</p>
+            <ul class="hist-list" id="histList"></ul>
+          </section>
+
+          <!-- Field guide -->
+          <section class="card" aria-labelledby="guide-h">
+            <h2 id="guide-h">How quishing works</h2>
+            <p class="sub">Attackers print a sticker, paste it over a real code — on a parking meter, restaurant table, or EV charger — and your phone does the rest. The red flags this scanner checks for:</p>
+            <div class="guide-grid">
+              <div class="guide-item"><b>The lookalike domain</b><p><span class="mono">paypa1.com</span> or <span class="mono">arnazon.com</span> — one swapped character away from the real brand, close enough to pass a glance.</p></div>
+              <div class="guide-item"><b>The subdomain costume</b><p><span class="mono">paypal.com.login-verify.example</span> — the brand name is just a subdomain. The real destination is whatever comes <em>after</em> it.</p></div>
+              <div class="guide-item"><b>The shortener blindfold</b><p><span class="mono">bit.ly/…</span> shows you nothing. The destination could be anything, and it can be changed after the sticker is printed.</p></div>
+              <div class="guide-item"><b>The punycode mask</b><p><span class="mono">xn--pple-43d.com</span> renders in some apps as a familiar-looking name built from lookalike foreign characters.</p></div>
+              <div class="guide-item"><b>The @ trick</b><p>In <span class="mono">https://paypal.com@evil.example</span>, everything before the @ is decoration. Your browser goes to the part after it.</p></div>
+              <div class="guide-item"><b>Not a link at all</b><p>Codes can auto-join a Wi-Fi network, add a contact, or open a payment app with an address pre-filled. “It scanned fine” says nothing about what it did.</p></div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="oops-h">
+            <h2 id="oops-h">Already scanned a bad one?</h2>
+            <p class="sub">Don't panic — opening a page is not the same as giving something away. Work through this in order:</p>
+            <ol class="steps">
+              <li><b>Close the tab</b> and don't enter passwords, card numbers, or seed phrases on it. If you didn't type anything, you're usually fine.</li>
+              <li><b>If you entered a password,</b> change it on the real site or app right away — and anywhere else you reused it. Turn on passkeys or two-factor while you're there.</li>
+              <li><b>If you entered card details,</b> call the number on the back of the card, freeze it in your banking app, and watch for small test charges.</li>
+              <li><b>If the code joined you to Wi-Fi,</b> forget that network in your settings so your phone doesn't reconnect automatically.</li>
+              <li><b>Tell the venue.</b> A fake sticker on a parking meter or table is still catching the next person.</li>
+            </ol>
+          </section>
+        </div>
+      </div>
+
+      <footer>
+        Scores are offline heuristics based on the structure of the decoded content — no live threat-intelligence lookup is performed, so a low score means “nothing suspicious found,” not a guarantee. When money or credentials are involved, navigate to the service yourself instead of trusting any code.
+      </footer>
+    </div>
+
+    <!-- Open-link confirmation -->
+    <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal">
+        <h3 id="modalTitle">Open this link?</h3>
+        <p id="modalText"></p>
+        <div class="m-url mono" id="modalUrl"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="modalCancel">Don't open it</button>
+          <button class="btn btn-danger" id="modalOpen">Open anyway</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="assets/js/app.js"></script>
+    
+  </body>
+</html>
