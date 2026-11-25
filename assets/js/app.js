@@ -111,9 +111,11 @@
       if (/^wifi:/i.test(raw)) {
         res.kind = "wifi"; res.kindLabel = "Wi-Fi join code";
         var fields = {};
-        raw.slice(5).split(";").forEach(function (part) {
-          var idx = part.indexOf(":");
-          if (idx > 0) fields[part.slice(0, idx).toUpperCase()] = part.slice(idx + 1);
+        /* fields split on unescaped ";", key/value on unescaped ":", and \x escapes are removed */
+        var unesc = function (s) { return s.replace(/\\(.)/g, "$1"); };
+        (raw.slice(5).match(/(?:\\.|[^;\\])+/g) || []).forEach(function (part) {
+          var kv = part.match(/^((?:\\.|[^:\\])+):((?:.|\n)*)$/);
+          if (kv) fields[unesc(kv[1]).toUpperCase()] = unesc(kv[2]);
         });
         res.meta.ssid = fields.S || "(hidden name)";
         var sec = (fields.T || "nopass").toUpperCase();
@@ -183,8 +185,14 @@
 
       /* ---- URL-ish? ---- */
       var urlText = raw;
-      var hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw);
-      if (!hasScheme && /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(raw) && raw.indexOf(" ") < 0) {
+      /* "localhost:8080" or "10.0.0.5:8080/x" looks like scheme:, but it's host:port */
+      var hostPort = /^[a-z0-9.-]+:\d+([\/?#]|$)/i.test(raw);
+      var hasScheme = !hostPort && /^[a-z][a-z0-9+.-]*:/i.test(raw);
+      if (hostPort) {
+        urlText = "https://" + raw;
+        hasScheme = true;
+        res.meta.schemeAdded = true;
+      } else if (!hasScheme && /^[^\s]+\.[a-z]{2,}(\/\S*)?$/i.test(raw) && raw.indexOf(" ") < 0) {
         urlText = "https://" + raw;
         hasScheme = true;
         res.meta.schemeAdded = true;
@@ -265,14 +273,14 @@
           b.keys.forEach(function (key) {
             if (brandHit) return;
             /* brand name sitting in a subdomain */
-            var subHit = parts.sub.some(function (l) { return normalizeLabel(l) === key || l.toLowerCase().indexOf(key) >= 0; });
+            /* substring matches only for long keys: "ups" must not hit "groups", "live" must not hit "olive" */
+            var long = key.length >= 5;
+            var subHit = parts.sub.some(function (l) { return normalizeLabel(l) === key || (long && l.toLowerCase().indexOf(key) >= 0); });
             if (subHit) { brandHit = { brand: b, how: "subdomain" }; return; }
             /* brand inside the registrable label */
             var regNorm = normalizeLabel(parts.regLabel);
             if (regNorm === key) { brandHit = { brand: b, how: "lookalike" }; return; }
-            if (regNorm.indexOf(key) >= 0 && regNorm.length > key.length) { brandHit = { brand: b, how: "embedded" }; return; }
-            /* homoglyph: normalizes to the brand but isn't spelled like it */
-            if (parts.regLabel.toLowerCase() !== key && regNorm === key) { brandHit = { brand: b, how: "lookalike" }; return; }
+            if (long && regNorm.indexOf(key) >= 0 && regNorm.length > key.length) { brandHit = { brand: b, how: "embedded" }; return; }
             /* typosquat distance */
             var d = levenshtein(regNorm, key);
             if (d >= 1 && d <= 2 && key.length >= 4) { brandHit = { brand: b, how: "typosquat", dist: d }; return; }
@@ -597,6 +605,7 @@
     function clearCamError() { $("camErr").classList.remove("show"); }
 
     function startCamera() {
+      if (stream) return; /* second click would orphan the first stream */
       clearCamError();
       if (typeof jsQR === "undefined") {
         camError("The QR decoder library didn't load — check your connection, or use the Upload or Paste link tabs instead.");

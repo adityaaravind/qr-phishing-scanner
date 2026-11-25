@@ -1,5 +1,7 @@
 # QR Phishing Scanner
 
+![Demo: pasting a lookalike link, then a subdomain costume and a Wi-Fi join code](docs/demo.gif)
+
 Scan a QR code first, check where it goes before opening it. Your phone camera opens the link in a QR code without showing you the destination, and that is exactly what quishing relies on — a sticker over a real code on a parking meter, a restaurant table, or an EV charger.
 
 This page decodes the code in your browser and scores the destination, so you can see the real domain before you tap anything.
@@ -30,9 +32,17 @@ python3 -m http.server
 
 Then open http://localhost:8000 in your browser.
 
+### Run the tests
+
+```
+node tests/analyze.test.js
+```
+
+The tests load the analysis engine from `assets/js/app.js` and check known phishing patterns, known false positives, and Wi-Fi and host:port parsing. Requires Node 18+.
+
 ## How it works and limits
 
-Everything runs offline in your browser as heuristics on the structure of the decoded content. No data leaves your device, and camera frames are never uploaded.
+Everything runs offline in your browser (the QR libraries are bundled, not loaded from a CDN) as heuristics on the structure of the decoded content. No data leaves your device, and camera frames are never uploaded.
 
 There is no live threat-intelligence lookup, so a low score means nothing suspicious was found, not that the link is safe. Do not follow a QR code for money or passwords — go to the site yourself instead.
 
@@ -41,4 +51,7 @@ There is no live threat-intelligence lookup, so a low score means nothing suspic
 - index.html — page markup
 - assets/css/styles.css — styles
 - assets/js/app.js — QR decoding and the risk checks
+- assets/vendor/ — jsQR 1.4.0 and qrcode-generator 1.4.4, bundled so the page works offline
+- tests/analyze.test.js — regression tests for the risk checks
+- docs/demo.gif — demo recording used at the top of this README
 - LICENSE — MIT
