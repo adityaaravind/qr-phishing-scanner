@@ -2,6 +2,8 @@
 
 ![Demo: pasting a lookalike link, then a subdomain costume and a Wi-Fi join code](docs/demo.gif)
 
+**Live site:** https://adityaaravind.github.io/qr-phishing-scanner/ — works on phones too (camera needs HTTPS, which the live site has).
+
 Scan a QR code first, check where it goes before opening it. Your phone camera opens the link in a QR code without showing you the destination, and that is exactly what quishing relies on — a sticker over a real code on a parking meter, a restaurant table, or an EV charger.
 
 This page decodes the code in your browser and scores the destination, so you can see the real domain before you tap anything.
